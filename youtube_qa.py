@@ -15,6 +15,7 @@
 import os
 import shutil
 from typing import Dict
+import requests
 
 import pandas as pd
 
@@ -95,6 +96,28 @@ def receive_user_input() -> Dict:
 
     return user_input
 
+def retrieve_video_information(video_link: str):
+    """Retrieves YouTube video information such as view count, title, etc.
+
+    Args:
+        video_link (str): url of the target YouTube video.
+    """
+    try:
+        api_key = os.environ["YOUTUBE_KEY"]
+    except KeyError:
+        api_key = str(input("🔑 Enter your YouTube API key: "))
+        os.environ["YOUTUBE_KEY"] = api_key
+
+    video_id = extract.video_id(video_link)
+    url = f'https://youtube.googleapis.com/youtube/v3/videos?part=snippet%2CcontentDetails%2Cstatistics&id={video_id}&key={api_key}'
+    payload = {}
+    headers = {
+      'Accept': 'application/json'
+    }
+    response = requests.request("GET", url, headers=headers, data=payload)
+
+    print(response.text)
+
 
 def partition_transcript(raw_transcript: str):
     """Group video transcript elements when they are too large.
@@ -122,6 +145,8 @@ def partition_transcript(raw_transcript: str):
     ]
     if len(partitioned_transcript[-1]["text"]) < 30:
         partitioned_transcript.pop()
+    print("partitioned_transcript:")
+    print(partitioned_transcript)
     return partitioned_transcript
 
 
@@ -177,6 +202,7 @@ def download_youtube_video_transcript(video_link: str):
     print("⏳ Transcript download in progress...")
     transcript = YouTubeTranscriptApi.get_transcript(video_id)
     print("✅ Video transcript downloaded successfully.")
+    print(transcript)
     return transcript
 
 
@@ -383,6 +409,7 @@ if __name__ == "__main__":
         try:
             transcript = download_youtube_video_transcript(user_input["video_link"])
             transcript = None
+            info = retrieve_video_information(user_input["video_link"])
         except Exception as e:
             print(e)
             print(
